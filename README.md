@@ -1,4 +1,5 @@
-
+# Expressive Itaian TTS for News Narration
+## Fine-tuning VITS, collecting data, inference tweaks & more
 
 
 This project documents the full pipeline of building a **high-quality TTS model** for Italian news audio, starting from **data acquisition** to **model evaluation** and a **deep dive into VITS internals**.  
@@ -11,13 +12,6 @@ We experiment with state-of-the-art models, prepare custom datasets, fine-tune [
 
 We built a **custom Italian TTS** model by fine-tuning VITS on a dataset of Italian news readings.  
 The goal was to achieve **natural prosody**, **high intelligibility**, and **minimal glitches**, outperforming baseline open-source models.
-
-
-
-
-## Project Overview
-
-Here's what we want to do:
 
 1. **Explore existing models**  
    - Check what other models address similar TTS problems.  
