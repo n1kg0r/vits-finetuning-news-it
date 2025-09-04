@@ -2,7 +2,7 @@
 ## Fine-tuning VITS, collecting data, inference tweaks & more
 
 
-This project documents the full pipeline of building a **high-quality TTS model** for Italian news audio, starting from **data acquisition** to **model evaluation** and a **deep dive into VITS internals**.  
+This project documents the full pipeline of building a **high-quality TTS model** for Italian news audio, starting from **data acquisition** to **model finetuning** and eventual **evaluation**.  
 We experiment with state-of-the-art models, prepare custom datasets, fine-tune [VITS](https://arxiv.org/abs/2106.06103), and evaluate both **subjective** (listening tests) and **objective** metrics.
 
 
@@ -44,7 +44,7 @@ The goal was to achieve **natural prosody**, **high intelligibility**, and **min
 
 6. **Evaluation**  
    - Compare outputs with the original voice  
-   - Compare with *X-TTS*, one of the SOTA Italian models (not fully open-source)
+   - Compare with *X-TTS*, one of the SOTA models (not fully open-source)
 
 ---
 
