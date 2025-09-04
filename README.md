@@ -12,20 +12,6 @@ We experiment with state-of-the-art models, prepare custom datasets, fine-tune [
 We built a **custom Italian TTS** model by fine-tuning VITS on a dataset of Italian news readings.  
 The goal was to achieve **natural prosody**, **high intelligibility**, and **minimal glitches**, outperforming baseline open-source models.
 
----
-
-## Workflow Overview
-
-```mermaid
-graph TD
-    A[Download YouTube Data] --> B[Audio Segmentation & Transcription]
-    B --> C[Punctuation Restoration & Normalization]
-    C --> D[Train/Test Split]
-    D --> E[Fine-Tune VITS]
-    E --> F[Listening Evaluation]
-    E --> G[Objective Metrics: WER, PESQ, STOI, MelDiff]
-    G --> H[Analysis & Visualization]
-    H --> I[Architecture Deep Dive]
 
 
 # Data Acquisition and Preprocessing
