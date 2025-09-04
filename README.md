@@ -1,4 +1,4 @@
-# Expressive Itaian TTS for News Narration
+# Expressive Italian TTS for News Narration
 ## Fine-tuning VITS, collecting data, inference tweaks & more
 
 
