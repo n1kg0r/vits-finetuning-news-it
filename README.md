@@ -14,6 +14,87 @@ The goal was to achieve **natural prosody**, **high intelligibility**, and **min
 
 
 
+
+## Project Overview
+
+Here's what we want to do:
+
+1. **Explore existing models**  
+   - Check what other models address similar TTS problems.  
+   - Spoiler: the problem is reasonably unsolved, so we proceed to data collection.
+
+2. **Data collection**  
+   - We parse YouTube videos from *Il Resto del Carlino* telegiornale:  
+     - Good audio quality  
+     - Well-structured playlists  
+     - Bolognese  
+   - After parsing, split the audio into short clips (~10s), preferably by pauses.  
+   - Transcribe audio, since VITS expects data in the format:  
+     ```
+     wav|text|normalized_text
+     ```
+
+3. **Data enhancement**  
+   - Restore punctuation  
+   - Normalize numbers  
+   - Add small silence padding at the start of clips  
+
+4. **VITS fine-tuning**  
+   - Train on our dataset (~1.5h of audio)  
+   - Collect outputs every ~10k steps to monitor progress
+
+5. **Inference and engineering tweaks**  
+   - After ~80k steps, the model sounds reasonably good  
+   - Beyond this, likely overfitting  
+   - Apply small inference tweaks (e.g., stress marks) to boost performance
+
+6. **Evaluation**  
+   - Compare outputs with the original voice  
+   - Compare with *X-TTS*, one of the SOTA Italian models (not fully open-source)
+
+---
+
+## Notebooks
+
+All the workflows can be found in the `notebooks` folder.  
+> Note: Some notebooks may not open directly on GitHub; download or clone the repo to view them locally.
+
+| Notebook | 
+|----------|
+| 1_tts_exploration.ipynb | 
+| 2_collecting_data.ipynb |
+| 3_data_enhanement.ipynb |
+| 4_finetuning.ipynb | 
+| 5_tts_inference.ipynb |
+| 6_tts_tests.ipynb | 
+
+---
+
+## Outputs
+
+Some outputs are stored in the following folders:
+
+| Folder | Description | 
+|--------|-------------|
+| sota_outputs | SOTA Italian TTS outputs |
+| vits_outputs | Final VITS model outputs with inference tweaks | 
+| vits_outputs_while_training | VITS outputs during training (no tweaks) | 
+
+---
+
+## Data Processing & Pipeline
+
+- Download and segment YouTube audio  
+- Automatic transcription using Whisper  
+- Punctuation restoration and text normalization  
+- Fine-tuning VITS on short clips  
+- Evaluating by WER comparing to XTTS2 - one of the modern SOTAs for inferencing and voice cloning, not opensource though
+
+
+
+
+
+
 # Data Acquisition and Preprocessing
 
 ## YouTube Downloading and Segmentation
