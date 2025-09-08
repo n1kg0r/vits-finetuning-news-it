@@ -76,94 +76,124 @@ Some outputs are stored in the following folders:
 
 ---
 
-## Data Processing & Pipeline
+# Introduction
+## Motivation
 
-- Download and segment YouTube audio  
-- Automatic transcription using Whisper  
-- Punctuation restoration and text normalization  
-- Fine-tuning VITS on short clips  
-- Evaluating by WER comparing to XTTS2 - one of the modern SOTAs for inferencing and voice cloning, not opensource though
+Text-to-Speech (TTS) is rapidly becoming a core technology for human-computer interaction, enabling more natural and efficient ways to access information. While English TTS systems are mature, high-quality expressive TTS in Italian is still scarce. Producing natural, intelligible, and expressive Italian speech remains a challenging task, particularly for nuanced applications like news narration.
 
+## Use Case
+ 
+News narration is an ideal testbed for expressive TTS: it combines structured content with moderate prosodic variation and benefits from high intelligibility. Many people consume audio content during commutes or multitasking, making high-quality Italian TTS a valuable tool for language learning, accessibility, and keeping up with current events. By focusing on news, we target a manageable yet impactful subset of the TTS problem.
 
+## Research Gap
 
+Existing open-source models such as Parler-TTS, Bark, and XTTS2 can produce expressive audio, but they often lack fine-grained control over voice, style, and prosody. Moreover, these models either have limited support for Italian, slow inference times, or licensing restrictions, making them suboptimal for our specific use case.
 
+## Objective
 
-
-# Data Acquisition and Preprocessing
-
-## YouTube Downloading and Segmentation
-
-- Used `yt-dlp` to download Italian news content.  
-- Segmented into smaller chunks for easier training.
-
-```bash
-yt-dlp -x --audio-format wav <video_url>
-```
-
-# Automatic Transcription
-
-## Used Whisper to transcribe speech into text.
-
-```python
-import whisper
-
-model = whisper.load_model("medium")
-result = model.transcribe("audio.wav", language="it")
-print(result["text"])
-```
+The objective of this project is to build a moderately expressive Italian TTS system for news narration by fine-tuning the VITS architecture on a curated dataset of Italian news readings. This approach allows for improved prosody, intelligibility, and control over output style, while remaining feasible to develop and evaluate within a small-scale research setting.
 
 
-# VITS Architecture Overview
 
-**VITS** stands for **Variational Inference Text-to-Speech**.
-It is a modern end-to-end TTS architecture that directly generates audio from text **without a separate vocoder**, achieving natural and expressive speech.
+In the following sections, we detail the pipeline for dataset preparation, model fine-tuning, and evaluation, highlighting key design choices and observed outcomes.
+
+For a detailed exploration of state-of-the-art TTS models, see [`1_tts_exploration.ipynb`](notebooks/1_tts_exploration.ipynb).
 
 ---
 
-## Key Ideas / Main Tricks
+## Data Collection
 
-1. **Latent audio representation $z$**
+We prepared a high-quality dataset of Italian news readings using the following workflow:
 
-   * Instead of predicting mel spectrograms deterministically, VITS introduces a latent variable $z$ per time step.
-   * Each $z_t$ is a **probabilistic vector**, encoding a **distribution over possible acoustic states** at that moment.
-   * This captures natural variation in speech: pitch, timbre, and subtle prosody changes.
+### 1. Download YouTube audio
+- Selected videos from *Il Resto del Carlino* telegiornale playlists as our narrator source
+- Downloaded WAV audio using [`yt-dlp`](https://github.com/yt-dlp/yt-dlp)
 
-2. **Variational Inference (VI)**
+### 2. Crop and clean audio
+- Removed intro/outro segments.  
+- Separated vocals from background noise using [Spleeter](https://github.com/deezer/spleeter)
+- Exported clean vocal tracks for further processing.
 
-   * During training, VITS learns an **approximate posterior** $q(z|x, y)$ where $x$ is text and $y$ is audio.
-   * The goal is to **align the posterior with a prior** $p(z|x)$ sampled from text, so we can generate realistic audio from text alone.
-   * VI is the main reason it is called **VITS**.
+### 3. Segment audio into chunks
+- Split audio into short clips (~10s) based on silence detection
+- Ensured minimum chunk length (1s) and avoided overly long segments
 
-3. **Normalizing Flows**
+### 4. Transcription
+- Automatically generated transcripts using [OpenAI Whisper](https://github.com/openai/whisper) in Italian
+- Stored metadata in `wav|text` format, ready for VITS fine-tuning
 
-   * Used to transform a simple latent prior (e.g., Gaussian) into a complex latent distribution matching the posterior.
-   * This allows highly flexible, expressive audio sampling.
+> This pipeline ensures a clean, well-segmented, and accurately transcribed dataset, forming the foundation for expressive TTS training.
 
-4. **HiFi-GAN Decoder**
-
-   * Converts sampled latent $z$ into waveform.
-   * Acts like a **renderer**, picking one plausible audio curve from the distribution encoded in $z$.
-   * Works **per time step**, producing smooth audio with natural micro-variations.
-
-5. **Monotonic Alignment Search**
-
-   * Ensures alignment between text and latent audio representations.
-   * Avoids explicit duration predictors; the model learns **which latent segments correspond to which text tokens**.
 
 ---
 
-## Why it works better than conventional TTS
+
+# Data Enhancement
+
+To improve TTS fine-tuning quality, we applied two important preprocessing steps:
+
+## 1. Punctuation Restoration
+- Many transcripts lacked proper punctuation, which led to unnatural pauses and robotic prosody.
+- We used a **multilingual punctuation restoration model** ([deepmultilingualpunctuation](https://github.com/deeppavlov/DeepPavlov/tree/master/deeppavlov/models/punctuation)) to restore punctuation in all text.
+- This improved the model's ability to learn **natural prosody** and produce more expressive speech.
+
+## 2. Audio Padding
+- During training (~60k steps), we noticed glitches at the start of audio clips.
+- Added a small **100ms silent padding** at the beginning of each audio file.
+- This mitigated initial artifacts and helped the model better learn **intonation and timing**.
+
+> These enhancements ensure the dataset is both **textually clean** and **acoustically well-prepared**, forming a stronger foundation for expressive TTS training.
+
+
+---
+
+# Finetuning of VITS Italian pretrained checkpoint
+
+--- 
+
+# VITS Architecture Overview 
+
+**VITS** (**Variational Inference Text-to-Speech**) is an end-to-end TTS model that generates audio **directly from text**, without a separate vocoder, producing natural and expressive speech.
+
+---
+
+## Key Ideas
+
+### 1. Latent Audio Representation (z)
+- Probabilistic vector per time step  
+- Captures pitch, timbre, and subtle prosody variations
+
+### 2. Variational Inference (VI)
+- Learns posterior `q(z|x, y)` and aligns it with prior `p(z|x)`  
+- Enables realistic audio generation from text
+
+### 3. Normalizing Flows
+- Transforms simple Gaussian prior → complex latent distribution  
+- Allows flexible and expressive audio sampling
+
+### 4. HiFi-GAN Decoder
+- Renders waveform from sampled `z`, per time step  
+- Produces smooth, natural audio
+
+### 5. Monotonic Alignment Search
+- Aligns text tokens with latent audio segments  
+- Avoids explicit duration prediction
+
+---
+
+## Advantages over Conventional TTS
 
 | Conventional TTS                                      | VITS                                              |
 | ----------------------------------------------------- | ------------------------------------------------- |
 | Predicts mel spectrogram → needs separate vocoder     | End-to-end latent-to-waveform                     |
-| Deterministic: one fixed output per input             | Probabilistic latent: natural variation in speech |
-| Cascaded errors possible: mel errors → vocoder errors | Single model: fewer error cascades                |
-| Often slower to train                                 | Efficient and high-quality synthesis              |
+| Deterministic output                                   | Probabilistic latent: natural variation          |
+| Cascaded errors: mel → vocoder                         | Single model: fewer error cascades               |
+| Often slower to train                                  | Efficient, high-quality synthesis                |
 
 ---
 
-## Data / Information Flow (ASCII Schema)
+## Data Flow (ASCII Schema)
+
 
 ```
 Text input
@@ -196,19 +226,149 @@ Waveform output
 
 ---
 
-### GAN / z Clarification
+## Analogy
 
-* The HiFi-GAN-like decoder takes **each $z_t$** sampled from the latent distribution and converts it into **audio waveform for that segment**.
-* It doesn’t operate on the whole curve at once; rather, it **processes each latent time step conditioned on previous waveform context**, ensuring continuity and naturalness.
+Think of `z` as **probabilistic keyframes in animation**:
 
----
-
-### Analogy
-
-Think of $z$ like **probabilistic keyframes in animation**:
-
-* Each keyframe isn’t a single pose, but a **cloud of possible poses**.
-* The decoder samples one plausible pose per frame, producing a smooth, natural motion (or audio in this case).
+- Each keyframe = a **cloud of possible poses**  
+- Decoder samples one per frame → smooth, natural motion (or speech)  
 
 This captures the **expressiveness and variability of real human speech** in a principled, learnable way.
 
+
+
+--- 
+
+# VITS Finetuning Overview
+
+## Load Pretrained Model
+- Italian VITS (`tts_models/it/mai_male/vits`)
+- Pretrained checkpoint and config loaded
+- Using **Coqui-TTS / IDIAP** implementations
+
+## Dataset Preparation
+- WAV files + metadata (`wav|text|text`)
+- Audio processed, segmented, padded, and punctuated
+
+## Observations Before Fine-Tuning
+- Works “out of the box” for Italian
+- **Strengths:** understandable pronunciation, works on Italian text
+- **Weaknesses:** robotic, flat prosody, incorrect pauses, no accented letters support
+
+--- 
+
+# VITS Inference: Results & Tweaks
+
+
+## Training Timeline & Observations
+
+- **Before ~20k steps**  
+  - First signs of understandable Italian speech  
+  - No proper pausing due to missing punctuation → restored punctuation
+
+- **Around ~60k steps**  
+  - Detected padding problem at the beginning of audio  
+  - Occasional uncontrollable stress errors → used apostrophe as a stress mark
+
+- **Around ~80k steps**  
+  - Improvements plateaued  
+  - Stopped training to avoid overfitting on our 1.5h long dataset
+
+---
+
+## Text Prompt Tweaks
+
+- Apply accents, apostrophes, double letters  
+- Adjust Italian spelling and lowercase letters  
+
+**Effects:**  
+- More natural prosody  
+- Better pronunciation  
+- Minor exaggerated stresses remain  
+
+---
+
+## Audio Padding Tweaks
+
+- Add small pause at **beginning of audio** (BOS)  
+- Helps model handle initial artifacts and improves rhythm  
+
+**Effect:** smoother, more natural speech  
+
+---
+
+## Reference Audio Prompting
+
+- Provide a **reference voice sample** to mimic intonation or style  
+- Combines with text tweaks for improved expressiveness  
+
+**Observations:**  
+- More control over styling
+- Less accurate prosody and stress
+- Can be combined with leading punctuation and apostrophes for final polish
+
+
+
+# VITS vs xTTS2 Comparison (WER Evaluation)
+
+## Setup
+
+- **VITS model:** Finetuned Italian VITS (~1.5h data, 80k steps)  
+- **Comparison model:** xTTS2 multilingual TTS  
+- **Evaluation metric:** WER (Word Error Rate) on short Italian audio chunks  
+- **Transcription:** OpenAI Whisper (`small`) with number normalization
+
+$$
+\text{WER} = \frac{S + D + I}{N}
+$$
+
+---
+
+## WER Results
+
+| File | VITS WER | xTTS2 WER |
+|------|----------|-----------|
+| chunk_00900.wav | 0.394 | 0.121 |
+| chunk_00700.wav | 0.722 | 0.111 |
+| chunk_00600.wav | 0.667 | 0.111 |
+| chunk_00500.wav | 0.455 | 0.182 |
+| chunk_00300.wav | 0.273 | 0.364 |
+| chunk_00200.wav | 1.094 | 0.250 |
+| chunk_00895.wav | 0.895 | 0.158 |
+| chunk_00400.wav | 0.696 | 0.087 |
+| chunk_00100.wav | 0.438 | 0.062 |
+| chunk_00799.wav | 0.640 | 0.360 |
+
+---
+
+## Observations
+
+- xTTS2 generally achieves lower WER than our finetuned VITS  
+- VITS is still understandable, close enough for open-source / small dataset use  
+- WER is not the most precise measurement for speech naturalness or prosody  
+- Minor stress, pause, and pronunciation differences remain
+
+---
+
+
+
+
+# Final Thoughts and Future Work
+
+## Results Overview
+
+- Subjectively, speech quality is **good**, understandable, and reasonably natural / which is unlike most other current opoensource Italian models 
+- Our finetuned Italian VITS is **open-source**, unlike most of other **good**-sounding sota models  
+- Inference speed is **much faster** than other open-source models.  
+- Performance is **much better than baseline VITS**, though still behind xTTS2 in WER.  
+  - xTTS2 is subject to licensing restrictions and may have slightly worse intonation control, albeit better WER and sound
+
+## Future Work
+
+- **Quantitative evaluation:** Explore metrics for stylistic naturalness and other aspects of speech quality.  
+- **More data:** Increase dataset size to improve model robustness, being careful to avoid overfitting.  
+- **Stylistically versatile data:** VITS allows prompting with reference audio; diverse data can help model mimic styles better.  
+- **Genre/style tagging:** Investigate tagging narration style or adding separate tokens/characters to encode stylistic variation.  
+- **Architecture improvements:** Consider potential tweaks to the VITS architecture for better prosody or style control.  
+
+> Overall, we are on the right track: the current model is usable, open-source, and a strong baseline for further experimentation.
